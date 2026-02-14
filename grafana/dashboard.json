@@ -1,0 +1,143 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "title": "Request Rate (req/s)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(ratelimiter_requests_total[1m])) by (decision)",
+          "legendFormat": "{{decision}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "fillOpacity": 20 },
+          "unit": "reqps"
+        }
+      }
+    },
+    {
+      "title": "Allow RPC Latency (p50 / p95 / p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(ratelimiter_request_duration_seconds_bucket{method=\"Allow\"}[1m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ratelimiter_request_duration_seconds_bucket{method=\"Allow\"}[1m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ratelimiter_request_duration_seconds_bucket{method=\"Allow\"}[1m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "fillOpacity": 10 },
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "title": "Redis Latency (p50 / p95 / p99)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(ratelimiter_redis_latency_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ratelimiter_redis_latency_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(ratelimiter_redis_latency_seconds_bucket[1m])) by (le))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "line", "fillOpacity": 10 },
+          "unit": "s"
+        }
+      }
+    },
+    {
+      "title": "Error Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "sum(rate(ratelimiter_redis_errors_total[1m]))",
+          "legendFormat": "Redis Errors/s"
+        },
+        {
+          "expr": "sum(rate(ratelimiter_internal_errors_total[1m])) by (method)",
+          "legendFormat": "Internal {{method}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "drawStyle": "bars", "fillOpacity": 50 },
+          "unit": "ops"
+        }
+      }
+    },
+    {
+      "title": "Tokens Remaining (sampled)",
+      "type": "gauge",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "ratelimiter_tokens_remaining",
+          "legendFormat": "{{key_prefix}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "min": 0, "max": 100, "unit": "short" }
+      }
+    },
+    {
+      "title": "Active gRPC Connections",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 6, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(ratelimiter_active_connections)",
+          "legendFormat": "connections"
+        }
+      ]
+    },
+    {
+      "title": "gRPC Request Rate by Method",
+      "type": "timeseries",
+      "gridPos": { "h": 6, "w": 6, "x": 18, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(rate(grpc_server_handled_total[1m])) by (grpc_method)",
+          "legendFormat": "{{grpc_method}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" }
+      }
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["rate-limiter", "infrastructure"],
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "title": "Rate Limiter Dashboard",
+  "uid": "rate-limiter-v1"
+}

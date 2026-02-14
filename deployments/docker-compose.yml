@@ -1,0 +1,88 @@
+version: "3.9"
+
+services:
+  # ── Redis ──────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save ""
+      --appendonly no
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Rate Limiter (2 replicas for horizontal scaling demo) ──
+  ratelimiter-1:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+    ports:
+      - "50051:50051"
+      - "9091:9090"
+    environment:
+      GRPC_PORT: "50051"
+      METRICS_PORT: "9090"
+      REDIS_ADDR: "redis:6379"
+      REDIS_POOL_SIZE: "100"
+      DEFAULT_BURST: "100"
+      DEFAULT_RATE: "10"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  ratelimiter-2:
+    build:
+      context: ..
+      dockerfile: deployments/Dockerfile
+    ports:
+      - "50052:50051"
+      - "9092:9090"
+    environment:
+      GRPC_PORT: "50051"
+      METRICS_PORT: "9090"
+      REDIS_ADDR: "redis:6379"
+      REDIS_POOL_SIZE: "100"
+      DEFAULT_BURST: "100"
+      DEFAULT_RATE: "10"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  # ── Prometheus ─────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - ratelimiter-1
+      - ratelimiter-2
+
+  # ── Grafana ────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ../grafana:/etc/grafana/provisioning/dashboards
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  redis-data:
+  grafana-data:

@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package ratelimit.v1;
+
+option go_package = "github.com/youruser/rate-limiter/proto/ratelimitpb";
+
+service RateLimitService {
+  // Check whether a request should be allowed or rate-limited.
+  rpc Allow(AllowRequest) returns (AllowResponse);
+
+  // Return current quota state without consuming a token.
+  rpc Peek(PeekRequest) returns (PeekResponse);
+
+  // Health check for load balancers / k8s probes.
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message AllowRequest {
+  // Unique key identifying the entity (e.g. "user:123", "ip:10.0.0.1", "api:payments")
+  string key = 1;
+  // Number of tokens to consume (default 1 if omitted)
+  int64 tokens = 2;
+  // Optional override: max bucket capacity for this key
+  int64 burst = 3;
+  // Optional override: refill rate (tokens/sec) for this key
+  double rate = 4;
+}
+
+message AllowResponse {
+  bool allowed = 1;
+  // Tokens remaining after this request
+  int64 remaining = 2;
+  // Total bucket capacity
+  int64 limit = 3;
+  // Unix timestamp (seconds) when the bucket fully refills
+  int64 reset_at = 4;
+  // Seconds until the next token becomes available (0 if allowed)
+  double retry_after = 5;
+}
+
+message PeekRequest {
+  string key = 1;
+}
+
+message PeekResponse {
+  int64 remaining = 1;
+  int64 limit = 2;
+  int64 reset_at = 3;
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  enum Status {
+    UNKNOWN = 0;
+    SERVING = 1;
+    NOT_SERVING = 2;
+  }
+  Status status = 1;
+  string redis_status = 2;
+}
